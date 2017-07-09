@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>3D word</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<style>
+	body {
+		font-family: Monospace;
+		background-color: #f0f0f0;
+		margin: 0px;
+		overflow: hidden;
+	}
+
+	#info {
+		position: absolute;
+		top: 0px;
+		width: 100%;
+		padding: 5px;
+		font-family:Monospace;
+		font-size:13px;
+		text-align:center;
+		color: #ffffff;
+	}
+
+	a {
+		color: #ffffff;
+	}
+	</style>
+</head>
+
+<body>
+
+	<div id="container"></div>
+	<div id="info">
+		<p style="margin-left: -50px; font-size: 20px;">3D Word - Available letters: C,D,E,F,G,I,L,O,T,3,0</p>
+		<input type="text" name="word" id="word" placeholder="insert word"></input>
+		<input type="button" onclick="confirmWord()" value="Confirm">
+		<input type="button" onclick="fallDown()" value="Explode" style="margin-left: 50px;"></input>
+		<input type="button" onclick="crumble()" value="Crumble"></input>
+		<input type="button" onclick="resume()" value="&#9658; Resume" style="background-color: green; color: white; margin-left: 50px;"></input>
+		<input type="button" onclick="stopFall()" value="&#10074;&#10074; Pause" style="background-color: orange"></input>
+		<input type="button" onclick="reset()" value="&#8634; Reset" style="background-color: red"></input>
+	</div>
+
+	<script src="./js/three.js"></script>
+	<script src="./js/TrackballControls.js"></script>
+	<script src="./js/dat.gui.min.js"></script>
+	<script src="./js/stats.min.js"></script>
+	<script src="./js/GPUParticleSystem.js"></script>
+
+	<script>
+		var camera, tick = 0,
+			scene, renderer, clock = new THREE.Clock(),
+			controls, container, gui = new dat.GUI( { width: 300 } ),
+			options, spawnerOptions, particleSystem;
+			
+		var idRender, gui_options;
+		
+		var falling = false;
+		var crumbling = false;
+		
+			//MODIFICATO
+			/*var matFloor = new THREE.MeshPhongMaterial( { dithering: true } );
+			var matBox = new THREE.MeshPhongMaterial( { color: 0x4080ff, dithering: true } );
+
+			var geoFloor = new THREE.BoxGeometry( 2000, 1, 2000 );
+			var geoBox = new THREE.BoxGeometry( 3, 1, 2 );
+
+			var mshFloor = new THREE.Mesh( geoFloor, matFloor );
+			var mshBox = new THREE.Mesh( geoBox, matBox );
+
+			var ambient = new THREE.AmbientLight( 0xffffff, 0.1 );
+
+			var spotLight = new THREE.SpotLight( 0xffffff, 1 );
+		*/
+		init();
+		animate();
+			
+			
+		function confirmWord(){
+			var word = document.getElementById("word").value;
+			if(word == "")
+				return;
+			spawnerOptions.timeScale = 1;
+			cancelAnimationFrame( idRender );
+			renderer.domElement.addEventListener('dblclick', null, false); //remove listener to render
+			scene = null;
+			camera = null;
+			controls = null;
+			tick = 0;
+			clock = new THREE.Clock();
+			
+			//store gui options
+			localStorage.setItem("options",JSON.stringify(options));
+			localStorage.setItem("spawnerOptions",JSON.stringify(spawnerOptions));
+			
+			gui.destroy();
+			gui = new dat.GUI( { width: 350 } );
+			container.innerHTML = "";
+			
+			init(word);
+			animate();
+		}
+		
+		function reset(){
+			document.getElementById("word").value = "";
+			cancelAnimationFrame( idRender );
+			renderer.domElement.addEventListener('dblclick', null, false); //remove listener to render
+			scene = null;
+			camera = null;
+			controls = null;
+			tick = 0;
+			clock = new THREE.Clock();
+			
+			localStorage.clear();
+			gui.destroy();
+			gui = new dat.GUI( { width: 350 } );
+			container.innerHTML = "";
+			
+			init();
+			animate();
+		}
+		
+		function fallDown(){
+			//if(falling && spawnerOptions.timeScale == 0)
+			spawnerOptions.timeScale = 1;
+			if(!falling){
+				particleSystem.explodeParticle( 1.0 );
+				falling = false;
+			}
+		}
+		
+		function crumble(){
+			//if(crumbling && spawnerOptions.timeScale == 0)
+			spawnerOptions.timeScale = 1;
+			if(!crumbling){
+				particleSystem.crumbleParticle( 1.0 );
+				crumbling = true;
+			}
+			
+		}
+		
+		function resume(){
+			particleSystem.explodeParticle( 0.0 );
+			particleSystem.crumbleParticle( 0.0 );
+			spawnerOptions.timeScale = 1;
+			falling = false;
+			crumbling = false;
+		}
+		
+		function stopFall(){
+			//particleSystem.stopFall();
+			spawnerOptions.timeScale = 0;
+		}
+
+		function init(word = "CG-3D") {
+		
+			container = document.getElementById( 'container' );
+
+			camera = new THREE.PerspectiveCamera( 28, window.innerWidth / window.innerHeight, 1, 10000 );
+			camera.position.z = 100;
+
+			scene = new THREE.Scene();
+			
+			//MODIFICATO
+				/*spotLight.position.set( 15, 40, 35 );
+				spotLight.castShadow = true;
+				spotLight.angle = Math.PI / 4;
+				spotLight.penumbra = 0.05;
+				spotLight.decay = 2;
+				spotLight.distance = 200;
+				spotLight.shadow.mapSize.width = 1024;
+				spotLight.shadow.mapSize.height = 1024;
+				spotLight.shadow.camera.near = 1;
+				spotLight.shadow.camera.far = 200;
+
+				matFloor.color.set( 0x808080 );
+
+				mshFloor.receiveShadow = true;
+				mshFloor.position.set( 0, -15, 0 );
+
+				mshBox.castShadow = true;
+				mshBox.position.set( 40, 1.8, 0 );
+
+				scene.add( camera );
+				scene.add( mshFloor );
+				scene.add( mshBox );
+				scene.add( ambient );
+				scene.add( spotLight );
+			*/
+
+			// options passed during each spawned
+			if (localStorage && localStorage.getItem("options") && document.getElementById("word").value != "") 
+				options = JSON.parse(localStorage.getItem("options"));
+			else{
+				localStorage.clear();
+				options = {
+					position: new THREE.Vector3(),
+					positionRandomness: .3,
+					velocity: new THREE.Vector3(),
+					velocityRandomness: 25,
+					color: 0xaa88ff,
+					colorRandomness: 0,
+					turbulence: 0,
+					lifetime: 1000,
+					size: 5,
+					sizeRandomness: 1,
+					transparent: true,
+					particles: 250000,
+					rotating: true
+				};
+			}
+			if (localStorage && localStorage.getItem("spawnerOptions") && document.getElementById("word").value != "") 
+				spawnerOptions = JSON.parse(localStorage.getItem("spawnerOptions"));
+			else{
+				localStorage.clear();
+				spawnerOptions = {
+					spawnRate: 10000,
+					horizontalSpeed: 1.5,
+					verticalSpeed: 1.33,
+					timeScale: 1
+				};
+			}
+			
+			gui.add( options, "particles", 1000, 500000 );
+			gui.addColor(options, 'color').onChange(function (e) {
+				options.color = e;
+			});
+			gui.add( options, 'transparent').name('transparent').onChange(function() {
+				particleSystem.changeTransparent(options.transparent);
+				
+			});
+			gui.add( options, 'rotating').name('rotating').onChange(function() {
+				//rotating = !rotating;
+				
+			});
+			gui.add( options, "size", 1, 20 );
+			gui.add( options, "colorRandomness", 0, 30 );
+			//gui.add( options, "lifetime", -1.0, 10 );
+			//gui.add( options, "turbulence", 0, 1 );
+			gui.add( spawnerOptions, "spawnRate", 10, 30000 );
+			gui.add( spawnerOptions, "timeScale", -1, 1 );
+			gui.close();
+			
+			
+			// The GPU Particle system extends THREE.Object3D, and so you can use it
+			// as you would any other scene graph component.	Particle positions will be
+			// relative to the position of the particle system, but you will probably only need one
+			// system for your whole scene
+			
+			particleSystem = new THREE.GPUParticleSystem( {
+				maxParticles: options.particles,
+				word: word,
+				transparent: options.transparent
+			} );
+			
+			scene.add( particleSystem );
+			
+			//
+
+			stats = new Stats();
+			container.appendChild( stats.dom );
+
+			//
+
+			renderer = new THREE.WebGLRenderer();
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			container.appendChild( renderer.domElement );
+			
+				//MODIFICATO
+				/*renderer.shadowMap.enabled = true;
+				renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+				renderer.gammaInput = true;
+				renderer.gammaOutput = true;
+				*/
+			//
+
+			controls = new THREE.TrackballControls( camera, renderer.domElement );
+			controls.rotateSpeed = 5.0;
+			controls.zoomSpeed = 2.2;
+			controls.panSpeed = 1;
+			controls.dynamicDampingFactor = 0.3;
+
+			window.addEventListener( 'resize', onWindowResize, false );
+
+		}
+
+		function onWindowResize() {
+
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+
+			renderer.setSize( window.innerWidth, window.innerHeight );
+
+		}
+
+		function animate() {
+
+			idRender = requestAnimationFrame( animate );
+
+			controls.update();
+
+			var delta = clock.getDelta() * spawnerOptions.timeScale;
+			tick += delta;
+
+			if ( tick < 0 ) tick = 0;
+
+			if ( delta > 0 ) {
+
+				for ( var x = 0; x < spawnerOptions.spawnRate * delta; x++ ) {
+				
+					particleSystem.spawnParticle( options );	
+
+				}
+				
+				//particleSystem.rotation.x += 0.001;
+				if(options.rotating)
+					particleSystem.rotation.y += 0.005;
+				
+			}
+
+			particleSystem.update( tick );
+
+			render();
+			stats.update();
+
+		}
+
+		function render() {
+
+			renderer.render( scene, camera );
+
+		}
+
+	</script>
+</body>
+
+</html>
