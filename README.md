@@ -3,16 +3,17 @@ This application allows users to create and manage particle word on your browser
 
 This application is created using WebGL and three.js libraries.
 
-<br/>
+
 # Requirements
-The application only needs a web browser compatible with WebGL (you can see a list here https://docs.unity3d.com/Manual/webgl-browsercompatibility.html).<br/>
+The application only needs a web browser compatible with WebGL (you can see if your browser is compatible here https://get.webgl.org/).
+
 If the generation is slow, just reload the page.
 
-<br/>
+
 # Start Application
 To start the application just open the index.html file in the root directory and view the generation of the default text "CG-3D".
 
-<br/>
+
 # Interaction
 You can stop, resume or restart the text generation using the button on the top of the page.
 
